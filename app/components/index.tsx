@@ -9,7 +9,7 @@ import Toast from '@/app/components/base/toast'
 import Sidebar from '@/app/components/sidebar'
 import ConfigSence from '@/app/components/config-scence'
 import Header from '@/app/components/header'
-import { fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
+import { deleteConversation, fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/file-uploader-in-attachment/types'
 import { Resolution, TransferMethod, WorkflowRunningStatus } from '@/types/app'
@@ -403,6 +403,7 @@ const Main: FC<IMainProps> = () => {
       id: placeholderAnswerId,
       content: '',
       isAnswer: true,
+      isAnswer: true,
     }
 
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
@@ -452,6 +453,8 @@ const Main: FC<IMainProps> = () => {
         updateCurrentQA({
           responseItem,
           questionId,
+          placeholderAnswerId,
+          questionItem,
           placeholderAnswerId,
           questionItem,
         })
@@ -634,6 +637,26 @@ const Main: FC<IMainProps> = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }
 
+  const handleDeleteConversation = async (id: string) => {
+    try {
+      await deleteConversation(id)
+      notify({ type: 'success', message: t('common.api.success') })
+      const newConversationList = conversationList.filter(item => item.id !== id)
+      setConversationList(newConversationList)
+      if (id === currConversationId) {
+        if (newConversationList.length > 0) {
+          handleConversationIdChange(newConversationList[0].id)
+        }
+        else {
+          handleConversationIdChange('-1')
+        }
+      }
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: e.message || 'Delete failed' })
+    }
+  }
+
   const renderSidebar = () => {
     if (!APP_ID || !APP_INFO || !promptConfig) { return null }
     return (
@@ -642,6 +665,7 @@ const Main: FC<IMainProps> = () => {
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={APP_INFO.copyright || APP_INFO.title}
+        onDeleteConversation={handleDeleteConversation}
       />
     )
   }

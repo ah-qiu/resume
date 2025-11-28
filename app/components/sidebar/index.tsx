@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ChatBubbleOvalLeftEllipsisIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 import { ChatBubbleOvalLeftEllipsisIcon as ChatBubbleOvalLeftEllipsisSolidIcon } from '@heroicons/react/24/solid'
 import Button from '@/app/components/base/button'
@@ -21,6 +22,7 @@ export interface ISidebarProps {
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  onDeleteConversation?: (id: string) => void
 }
 
 const Sidebar: FC<ISidebarProps> = ({
@@ -28,6 +30,7 @@ const Sidebar: FC<ISidebarProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  onDeleteConversation,
 }) => {
   const { t } = useTranslation()
   return (
@@ -70,7 +73,20 @@ const Sidebar: FC<ISidebarProps> = ({
                 )}
                 aria-hidden="true"
               />
-              {item.name}
+              <div className="flex-1 truncate break-all">
+                {item.name}
+              </div>
+              {onDeleteConversation && (
+                <div
+                  className="hidden group-hover:flex shrink-0 h-6 w-6 items-center justify-center rounded-md hover:bg-gray-200 text-gray-400 hover:text-gray-500 z-10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteConversation(item.id)
+                  }}
+                >
+                  <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                </div>
+              )}
             </div>
           )
         })}
