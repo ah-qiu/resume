@@ -85,7 +85,7 @@ export default function ReportPage() {
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-full backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-pink-500"></span>
-              生成日期: {new Date().toISOString().split('T')[0]}
+              生成日期: {new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' })}
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-full backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
