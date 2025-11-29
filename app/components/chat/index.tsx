@@ -55,6 +55,7 @@ const Chat: FC<IChatProps> = ({
   const { t } = useTranslation()
   const { notify } = Toast
   const isUseInputMethod = useRef(false)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
 
   const [query, setQuery] = React.useState('')
   const queryRef = useRef('')
@@ -141,10 +142,31 @@ const Chat: FC<IChatProps> = ({
     handleSend()
   }
 
+  // 滚动到底部的函数
+  const scrollToBottom = React.useCallback((smooth = false) => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      })
+    }
+  }, [])
+
+  // 当聊天列表变化或正在回复时，滚动到底部
+  useEffect(() => {
+    // 使用 requestAnimationFrame 确保 DOM 更新后再滚动
+    requestAnimationFrame(() => {
+      scrollToBottom()
+    })
+  }, [chatList, isResponding, scrollToBottom])
+
   return (
-    <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
+    <div className={cn('flex flex-col h-full')}>
       {/* Chat List */}
-      <div className="h-full space-y-[30px]">
+      <div
+        ref={chatScrollRef}
+        className={cn(!feedbackDisabled && 'px-3.5', 'flex-1 overflow-y-auto space-y-[30px] py-4')}
+      >
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
@@ -170,8 +192,8 @@ const Chat: FC<IChatProps> = ({
       </div>
       {
         !isHideSendInput && (
-          <div className='fixed z-10 bottom-0 left-1/2 transform -translate-x-1/2 pc:ml-[122px] tablet:ml-[96px] mobile:ml-0 pc:w-[794px] tablet:w-[794px] max-w-full mobile:w-full px-3.5'>
-            <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
+          <div className='shrink-0 w-full px-3.5 py-3 bg-white/95 backdrop-blur-sm border-t border-gray-200/50'>
+            <div className='relative p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-300 rounded-xl overflow-y-auto shadow-lg'>
               {
                 visionConfig?.enabled && (
                   <>
@@ -208,7 +230,7 @@ const Chat: FC<IChatProps> = ({
               }
               <Textarea
                 className={`
-                  block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-base text-gray-700 outline-none appearance-none resize-none
+                  block w-full px-3 pr-[118px] py-2.5 leading-5 max-h-none text-base text-gray-700 outline-none appearance-none resize-none
                   ${visionConfig?.enabled && 'pl-12'}
                 `}
                 value={query}

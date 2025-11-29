@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import StreamdownMarkdown from '@/app/components/base/streamdown-markdown'
 import Tooltip from '@/app/components/base/tooltip'
-import WorkflowProcess from '@/app/components/workflow/workflow-process'
 import { randomString } from '@/utils/string'
 import ImageGallery from '../../base/image-gallery'
 import LoadingAnim from '../loading-anim'
@@ -240,10 +239,8 @@ const Answer: FC<IAnswerProps> = ({
         </div>
         <div className={`${s.answerWrap} max-w-[calc(100%-3rem)]`}>
           <div className={`${s.answer} relative text-sm text-gray-900`}>
-            <div className={`ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl ${workflowProcess && 'min-w-[480px]'}`}>
-              {workflowProcess && (
-                <WorkflowProcess data={workflowProcess} hideInfo />
-              )}
+            <div className="ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl">
+              {/* WorkflowProcess 组件已隐藏，只保留加载动画 */}
               {(isResponding && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
                 ? (
                   <div className="flex items-center justify-center w-6 h-5">
