@@ -98,13 +98,18 @@ const Answer: FC<IAnswerProps> = ({
       }
       const data = JSON.parse(content)
 
-      // Handle multiple jobs structure: {"jobs": [...]}
+      // Handle new format: {"recommendations": [...]}
+      if (data.recommendations && Array.isArray(data.recommendations)) {
+        return data.recommendations
+      }
+
+      // Handle old format: {"jobs": [...]}
       if (data.jobs && Array.isArray(data.jobs)) {
         return data.jobs
       }
 
-      // Handle single job structure
-      if ((data['匹配度评分（0-100）'] !== undefined || data['匹配度评分'] !== undefined) && data['公司']) {
+      // Handle single job structure (new format with 公司名称)
+      if ((data['匹配度评分（0-100）'] !== undefined || data['匹配度评分'] !== undefined) && (data['公司名称'] || data['公司'])) {
         return data as JobMatchingData
       }
       return null

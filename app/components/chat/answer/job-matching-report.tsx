@@ -3,20 +3,23 @@ import React from 'react'
 import { MapPinIcon, CurrencyYenIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 export interface JobMatchingData {
-  '匹配度评分（0-100）': number
-  '匹配度评分'?: number
-  '公司': string
-  '岗位名称（权重15%）': string
-  '岗位名称'?: string
+  '匹配度评分（0-100）'?: number
+  '匹配度评分': number
+  '公司'?: string
+  '公司名称'?: string
+  '岗位名称（权重15%）'?: string
+  '岗位名称': string
   '所属行业': string
-  '任职要求（权重40%）（你需要根据用户的经历和技能与岗位需求进行匹配）': string | string[]
-  '任职要求'?: string | string[]
-  '学历（权重15%，高于也属于符合）': string
+  '任职要求（权重40%）（你需要根据用户的经历和技能与岗位需求进行匹配）'?: string | string[]
+  '任职要求': string | string[]
+  '其他需求'?: string[]
+  '学历（权重15%，高于也属于符合）'?: string
   '学历'?: string
-  '所在地（权重15%）': string
+  '所在地（权重15%）'?: string
   '所在地'?: string
-  '薪资范围（权重15%）': string
+  '薪资范围（权重15%）'?: string
   '薪资范围'?: string
+  '匹配理由'?: string | string[]
   [key: string]: any
 }
 
@@ -26,19 +29,27 @@ interface JobMatchingReportProps {
 }
 
 const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
+  // Handle match reason - can be string or array
   const matchReasonKey = Object.keys(data).find(key => key.startsWith('匹配理由'))
-  const matchReason = matchReasonKey ? data[matchReasonKey] : ''
+  const matchReasonRaw = matchReasonKey ? data[matchReasonKey] : null
+  const matchReasonArray = Array.isArray(matchReasonRaw)
+    ? matchReasonRaw
+    : (typeof matchReasonRaw === 'string' ? [matchReasonRaw] : [])
 
   const requirements = data['任职要求（权重40%）（你需要根据用户的经历和技能与岗位需求进行匹配）'] || data['任职要求']
   const tags = Array.isArray(requirements) ? requirements : (requirements as string)?.split(/[,，、\n]/).map(s => s.trim()).filter(Boolean) || []
 
+  // Handle other requirements
+  const otherRequirements = data['其他需求'] || []
+  const allTags = [...tags, ...(Array.isArray(otherRequirements) ? otherRequirements : [])]
+
   const score = data['匹配度评分（0-100）'] || data['匹配度评分'] || 0
-  const positionName = data['岗位名称（权重15%）'] || data['岗位名称']
-  const salary = data['薪资范围（权重15%）'] || data['薪资范围']
-  const location = data['所在地（权重15%）'] || data['所在地']
-  const education = data['学历（权重15%，高于也属于符合）'] || data['学历']
-  const company = data['公司']
-  const industry = data['所属行业']
+  const positionName = data['岗位名称（权重15%）'] || data['岗位名称'] || ''
+  const salary = data['薪资范围（权重15%）'] || data['薪资范围'] || ''
+  const location = data['所在地（权重15%）'] || data['所在地'] || ''
+  const education = data['学历（权重15%，高于也属于符合）'] || data['学历'] || ''
+  const company = data['公司名称'] || data['公司'] || ''
+  const industry = data['所属行业'] || ''
 
   const getScoreConfig = (s: number) => {
     if (s >= 90) { return {
@@ -77,10 +88,10 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
 
   const scoreConfig = getScoreConfig(score)
 
-  // Parse match reason into list items if possible (looking for "1) ... 2) ...")
-  const reasonItems = matchReason.split(/\d+[.、)]\s*/).filter(item => item.trim().length > 0)
-  // If parsing fails or results in one big chunk, fallback to just splitting by newline
-  const displayItems = reasonItems.length > 1 ? reasonItems : matchReason.split('\n').filter(s => s.trim())
+  // Use match reason array directly if available, otherwise parse from string
+  const displayItems = matchReasonArray.length > 0
+    ? matchReasonArray.filter(s => s && s.trim().length > 0)
+    : []
 
   return (
     <div className="bg-white/90 backdrop-blur-sm rounded-2xl border-2 border-purple-200/50 shadow-xl overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 relative group">
@@ -118,44 +129,42 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
             {salary}
           </div>
           {/* Tech Stack Tags */}
-          {tags.slice(0, 5).map((tag, i) => (
+          {allTags.map((tag, i) => (
             <div key={i} className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 text-cyan-700 text-xs font-medium shadow-sm">
               {tag}
             </div>
           ))}
-          {tags.length > 5 && (
-            <div className="px-4 py-2 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-xs font-medium">
-              +{tags.length - 5}
-            </div>
-          )}
         </div>
 
         {/* Analysis / Match Reason */}
         {displayItems.length > 0 && (
-          <div className="bg-gradient-to-br from-gray-50 to-purple-50/30 rounded-xl border-2 border-purple-100 p-6">
-            <div className="space-y-4">
-              {displayItems.map((item, i) => {
+          <div>
+            <h4 className="text-sm font-bold text-gray-800 mb-4">匹配分析</h4>
+            <div className="bg-gradient-to-br from-gray-50 to-purple-50/30 rounded-xl border-2 border-purple-100 p-6">
+              <div className="space-y-4">
+                {displayItems.map((item, i) => {
                 // Try to determine sentiment or category based on content text (simple heuristic)
-                const isNegative = item.includes('不匹配') || item.includes('差异') || item.includes('低于') || item.includes('挑战')
-                const isPositive = !isNegative && (item.includes('符合') || item.includes('满足') || item.includes('一致') || item.includes('优势'))
+                  const isNegative = item.includes('不匹配') || item.includes('差异') || item.includes('低于') || item.includes('挑战')
+                  const isPositive = !isNegative && (item.includes('符合') || item.includes('满足') || item.includes('一致') || item.includes('优势'))
 
-                return (
-                  <div key={i} className="flex gap-3 items-start bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors">
-                    <div className="mt-0.5 flex-shrink-0">
-                      {isNegative
-                        ? <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
-                        : (isPositive
-                          ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
-                          : <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5"></div>
-                        )
-                      }
+                  return (
+                    <div key={i} className="flex gap-3 items-start bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors">
+                      <div className="mt-0.5 flex-shrink-0">
+                        {isNegative
+                          ? <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
+                          : (isPositive
+                            ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
+                            : <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5"></div>
+                          )
+                        }
+                      </div>
+                      <div className={`text-sm leading-relaxed ${isNegative ? 'text-gray-700' : 'text-gray-800'}`}>
+                        {item.trim()}
+                      </div>
                     </div>
-                    <div className={`text-sm leading-relaxed ${isNegative ? 'text-gray-700' : 'text-gray-800'}`}>
-                      {item.trim()}
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           </div>
         )}

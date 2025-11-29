@@ -9,9 +9,9 @@ interface ReportCardProps {
 }
 
 const ReportCard: FC<ReportCardProps> = ({ data, onClick }) => {
-  const score = data['匹配度评分（0-100）'] || data['匹配度评分']
-  const company = data['公司']
-  const position = data['岗位名称（权重15%）'] || data['岗位名称']
+  const score = data['匹配度评分（0-100）'] || data['匹配度评分'] || 0
+  const company = data['公司名称'] || data['公司'] || ''
+  const position = data['岗位名称（权重15%）'] || data['岗位名称'] || ''
 
   const getScoreColor = (s: number) => {
     if (s >= 80) { return 'text-green-600 bg-green-50 border-green-200' }

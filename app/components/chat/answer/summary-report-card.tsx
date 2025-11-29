@@ -53,8 +53,8 @@ const SummaryReportCard: FC<SummaryReportCardProps> = ({ data, onClick }) => {
         <div className="space-y-3">
           {data.slice(0, 3).map((job, index) => {
             const score = job['匹配度评分（0-100）'] || job['匹配度评分'] || 0
-            const position = job['岗位名称（权重15%）'] || job['岗位名称']
-            const company = job['公司']
+            const position = job['岗位名称（权重15%）'] || job['岗位名称'] || ''
+            const company = job['公司名称'] || job['公司'] || ''
 
             return (
               <div key={index} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
