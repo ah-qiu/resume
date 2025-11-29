@@ -116,6 +116,8 @@ const Answer: FC<IAnswerProps> = ({
 
   const jobMatchingData = !isAgentMode ? tryParseJobMatchingData(content) : null
   const isMultipleJobs = Array.isArray(jobMatchingData)
+  // If it is responding and the content starts with { but cannot be parsed as data yet, it is considered as generating a report
+  const isGeneratingReport = isResponding && !jobMatchingData && content.trim().startsWith('{')
 
   const handleCardClick = (data: JobMatchingData) => {
     // Create a unique ID for this specific job report if it doesn't have one
@@ -264,7 +266,16 @@ const Answer: FC<IAnswerProps> = ({
                             )}
                         </div>
                       )
-                      : <StreamdownMarkdown content={content} />
+                      : (
+                        isGeneratingReport
+                          ? (
+                            <div className="flex items-center gap-2 text-gray-500 text-sm">
+                              <LoadingAnim type="text" />
+                              <span>正在为您生成专属职位匹配报告</span>
+                            </div>
+                          )
+                          : <StreamdownMarkdown content={content} />
+                      )
                   ))}
               {suggestedQuestions.length > 0 && (
                 <div className="mt-3">
