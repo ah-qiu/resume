@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { JobMatchingData } from '@/app/components/chat/answer/job-matching-report'
 import JobMatchingReport from '@/app/components/chat/answer/job-matching-report'
 import Loading from '@/app/components/base/loading'
-import { ChevronLeftIcon, SparklesIcon, BoltIcon, TrophyIcon, ChartBarIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, SparklesIcon } from '@heroicons/react/24/outline'
 
 export default function ReportPage() {
   const router = useRouter()
@@ -55,20 +55,6 @@ export default function ReportPage() {
 
   const reportList = Array.isArray(data) ? data : [data]
 
-  // Simple calc for summary stats
-  const avgScore = reportList.reduce((acc, curr) => {
-    const score = curr['匹配度评分（0-100）'] || curr['匹配度评分'] || 0
-    return acc + score
-  }, 0) / (reportList.length || 1)
-
-  const getCompetitiveness = (score: number) => {
-    if (score >= 80) { return { level: 'T5 / P7+', gradient: 'from-purple-500 to-pink-500', iconBg: 'bg-gradient-to-br from-purple-100 to-pink-100' } }
-    if (score >= 60) { return { level: 'T4 / P6', gradient: 'from-blue-500 to-cyan-500', iconBg: 'bg-gradient-to-br from-blue-100 to-cyan-100' } }
-    return { level: 'T3 / P5', gradient: 'from-gray-400 to-gray-500', iconBg: 'bg-gradient-to-br from-gray-100 to-gray-200' }
-  }
-
-  const comp = getCompetitiveness(avgScore)
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 font-sans">
       {/* Navbar / Header Controls */}
@@ -104,42 +90,6 @@ export default function ReportPage() {
             <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-full backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
               核心策略: 技能匹配 / 优势分析
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl p-6 border-2 border-purple-200/50 relative overflow-hidden group hover:shadow-xl hover:scale-105 transition-all duration-300">
-            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity">
-              <TrophyIcon className="w-20 h-20 text-purple-600" />
-            </div>
-            <div className="text-purple-700 text-xs font-bold uppercase tracking-wider mb-3">当前竞争力</div>
-            <div className={`text-3xl font-bold bg-gradient-to-r ${comp.gradient} bg-clip-text text-transparent flex items-center gap-2`}>
-              {comp.level}
-              <SparklesIcon className="w-6 h-6 text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-cyan-100 to-blue-100 rounded-2xl p-6 border-2 border-cyan-200/50 relative overflow-hidden group hover:shadow-xl hover:scale-105 transition-all duration-300">
-            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity">
-              <BoltIcon className="w-20 h-20 text-cyan-600" />
-            </div>
-            <div className="text-cyan-700 text-xs font-bold uppercase tracking-wider mb-3">技术栈匹配度</div>
-            <div className="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-              {avgScore > 70 ? 'High' : 'Medium'}
-              <BoltIcon className="w-6 h-6 text-yellow-500" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl p-6 border-2 border-orange-200/50 relative overflow-hidden group hover:shadow-xl hover:scale-105 transition-all duration-300">
-            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity">
-              <ChartBarIcon className="w-20 h-20 text-orange-600" />
-            </div>
-            <div className="text-orange-700 text-xs font-bold uppercase tracking-wider mb-3">市场稀缺性</div>
-            <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
-              Top {Math.max(5, 100 - Math.round(avgScore))}%
-              <ChartBarIcon className="w-6 h-6 text-orange-500" />
             </div>
           </div>
         </div>
