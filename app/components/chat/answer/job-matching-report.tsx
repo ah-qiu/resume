@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
-import { MapPinIcon, CurrencyYenIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, CurrencyYenIcon, CheckCircleIcon, ExclamationTriangleIcon, AcademicCapIcon, BriefcaseIcon, SparklesIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 
 export interface JobMatchingData {
   '匹配度评分（0-100）'?: number
@@ -37,11 +37,14 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
     : (typeof matchReasonRaw === 'string' ? [matchReasonRaw] : [])
 
   const requirements = data['任职要求（权重40%）（你需要根据用户的经历和技能与岗位需求进行匹配）'] || data['任职要求']
-  const tags = Array.isArray(requirements) ? requirements : (requirements as string)?.split(/[,，、\n]/).map(s => s.trim()).filter(Boolean) || []
+  const requirementList = Array.isArray(requirements)
+    ? requirements.filter(item => item && item.trim().length > 0)
+    : (requirements as string)?.split(/[,，、\n]/).map(s => s.trim()).filter(Boolean) || []
 
   // Handle other requirements
-  const otherRequirements = data['其他需求'] || []
-  const allTags = [...tags, ...(Array.isArray(otherRequirements) ? otherRequirements : [])]
+  const otherRequirements = Array.isArray(data['其他需求'])
+    ? data['其他需求'].filter(item => item && item.trim().length > 0)
+    : []
 
   const score = data['匹配度评分（0-100）'] || data['匹配度评分'] || 0
   const positionName = data['岗位名称（权重15%）'] || data['岗位名称'] || ''
@@ -52,30 +55,36 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
   const industry = data['所属行业'] || ''
 
   const getScoreConfig = (s: number) => {
-    if (s >= 90) { return {
-      label: 'S级匹配',
-      gradient: 'from-emerald-500 to-teal-500',
-      bg: 'bg-gradient-to-br from-emerald-100 to-teal-100',
-      border: 'border-emerald-300',
-      text: 'text-emerald-700',
-      badgeGradient: 'from-emerald-500 to-teal-500',
-    } }
-    if (s >= 80) { return {
-      label: 'A级匹配',
-      gradient: 'from-blue-500 to-cyan-500',
-      bg: 'bg-gradient-to-br from-blue-100 to-cyan-100',
-      border: 'border-blue-300',
-      text: 'text-blue-700',
-      badgeGradient: 'from-blue-500 to-cyan-500',
-    } }
-    if (s >= 60) { return {
-      label: 'B级匹配',
-      gradient: 'from-amber-500 to-orange-500',
-      bg: 'bg-gradient-to-br from-amber-100 to-orange-100',
-      border: 'border-amber-300',
-      text: 'text-amber-700',
-      badgeGradient: 'from-amber-500 to-orange-500',
-    } }
+    if (s >= 90) {
+      return {
+        label: 'S级匹配',
+        gradient: 'from-emerald-500 to-teal-500',
+        bg: 'bg-gradient-to-br from-emerald-100 to-teal-100',
+        border: 'border-emerald-300',
+        text: 'text-emerald-700',
+        badgeGradient: 'from-emerald-500 to-teal-500',
+      }
+    }
+    if (s >= 80) {
+      return {
+        label: 'A级匹配',
+        gradient: 'from-blue-500 to-cyan-500',
+        bg: 'bg-gradient-to-br from-blue-100 to-cyan-100',
+        border: 'border-blue-300',
+        text: 'text-blue-700',
+        badgeGradient: 'from-blue-500 to-cyan-500',
+      }
+    }
+    if (s >= 60) {
+      return {
+        label: 'B级匹配',
+        gradient: 'from-amber-500 to-orange-500',
+        bg: 'bg-gradient-to-br from-amber-100 to-orange-100',
+        border: 'border-amber-300',
+        text: 'text-amber-700',
+        badgeGradient: 'from-amber-500 to-orange-500',
+      }
+    }
     return {
       label: '匹配度低',
       gradient: 'from-red-500 to-pink-500',
@@ -128,13 +137,56 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
             <CurrencyYenIcon className="w-4 h-4 text-amber-600" />
             {salary}
           </div>
-          {/* Tech Stack Tags */}
-          {allTags.map((tag, i) => (
-            <div key={i} className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 text-cyan-700 text-xs font-medium shadow-sm">
-              {tag}
+          {/* Education */}
+          {education && (
+            <div className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 text-xs font-medium shadow-sm">
+              <AcademicCapIcon className="w-4 h-4 text-green-600" />
+              {education}
             </div>
-          ))}
+          )}
         </div>
+
+        {/* Requirements Section */}
+        {requirementList.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-bold text-gray-800 mb-4">任职要求</h4>
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50/30 rounded-xl border-2 border-blue-100 p-6">
+              <div className="space-y-3">
+                {requirementList.map((item, i) => (
+                  <div key={i} className="flex gap-3 items-start bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors">
+                    <div className="mt-0.5 flex-shrink-0">
+                      <BriefcaseIcon className="w-5 h-5 text-blue-700" />
+                    </div>
+                    <div className="text-sm leading-relaxed text-gray-800">
+                      {item.trim()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Other Requirements Section */}
+        {otherRequirements.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-bold text-gray-800 mb-4">其他需求</h4>
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50/30 rounded-xl border-2 border-indigo-100 p-6">
+              <div className="space-y-3">
+                {otherRequirements.map((item, i) => (
+                  <div key={i} className="flex gap-3 items-start bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors">
+                    <div className="mt-0.5 flex-shrink-0">
+                      <SparklesIcon className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div className="text-sm leading-relaxed text-gray-800">
+                      {item.trim()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Analysis / Match Reason */}
         {displayItems.length > 0 && (
@@ -143,22 +195,39 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
             <div className="bg-gradient-to-br from-gray-50 to-purple-50/30 rounded-xl border-2 border-purple-100 p-6">
               <div className="space-y-4">
                 {displayItems.map((item, i) => {
-                // Try to determine sentiment or category based on content text (simple heuristic)
-                  const isNegative = item.includes('不匹配') || item.includes('差异') || item.includes('低于') || item.includes('挑战')
-                  const isPositive = !isNegative && (item.includes('符合') || item.includes('满足') || item.includes('一致') || item.includes('优势'))
+                  // Extract percentage from text (e.g., "约60%", "约80%", "约100%")
+                  const percentageMatch = item.match(/(?:约)?(\d+)%/)
+                  const percentage = percentageMatch ? parseInt(percentageMatch[1], 10) : null
+
+                  // Determine icon based on percentage
+                  let iconElement
+                  let textColor = 'text-gray-800'
+
+                  if (percentage !== null) {
+                    if (percentage >= 80) {
+                      // High match (>= 80%)
+                      iconElement = <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
+                      textColor = 'text-gray-800'
+                    } else if (percentage >= 50) {
+                      // Medium match (50-79%)
+                      iconElement = <InformationCircleIcon className="w-5 h-5 text-purple-500" />
+                      textColor = 'text-gray-800'
+                    } else {
+                      // Low match (< 50%)
+                      iconElement = <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
+                      textColor = 'text-gray-700'
+                    }
+                  } else {
+                    // Fallback: if no percentage found, use neutral icon
+                    iconElement = <InformationCircleIcon className="w-5 h-5 text-purple-500" />
+                  }
 
                   return (
                     <div key={i} className="flex gap-3 items-start bg-white/60 rounded-lg p-3 hover:bg-white/80 transition-colors">
                       <div className="mt-0.5 flex-shrink-0">
-                        {isNegative
-                          ? <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
-                          : (isPositive
-                            ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
-                            : <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5"></div>
-                          )
-                        }
+                        {iconElement}
                       </div>
-                      <div className={`text-sm leading-relaxed ${isNegative ? 'text-gray-700' : 'text-gray-800'}`}>
+                      <div className={`text-sm leading-relaxed ${textColor}`}>
                         {item.trim()}
                       </div>
                     </div>
