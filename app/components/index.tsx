@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
@@ -9,7 +9,7 @@ import Toast from '@/app/components/base/toast'
 import Sidebar from '@/app/components/sidebar'
 import ConfigSence from '@/app/components/config-scence'
 import Header from '@/app/components/header'
-import { fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
+import { deleteConversation, fetchAppParams, fetchChatList, fetchConversations, generationConversationName, sendChatMessage, updateFeedback } from '@/service'
 import type { ChatItem, ConversationItem, Feedbacktype, PromptConfig, VisionFile, VisionSettings } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/file-uploader-in-attachment/types'
 import { Resolution, TransferMethod, WorkflowRunningStatus } from '@/types/app'
@@ -51,7 +51,7 @@ const Main: FC<IMainProps> = () => {
   const [fileConfig, setFileConfig] = useState<FileUpload | undefined>()
 
   useEffect(() => {
-    if (APP_INFO?.title) { document.title = `${APP_INFO.title} - Powered by Dify` }
+    if (APP_INFO?.title) { document.title = APP_INFO.title }
   }, [APP_INFO?.title])
 
   // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
@@ -172,18 +172,6 @@ const Main: FC<IMainProps> = () => {
   * chat info. chat is under conversation.
   */
   const [chatList, setChatList, getChatList] = useGetState<ChatItem[]>([])
-  const chatListDomRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    // scroll to bottom with page-level scrolling
-    if (chatListDomRef.current) {
-      setTimeout(() => {
-        chatListDomRef.current?.scrollIntoView({
-          behavior: 'auto',
-          block: 'end',
-        })
-      }, 50)
-    }
-  }, [chatList, currConversationId])
   // user can not edit inputs if user had send message
   const canEditInputs = !chatList.some(item => item.isAnswer === false) && isNewConversation
   const createNewChat = () => {
@@ -634,6 +622,26 @@ const Main: FC<IMainProps> = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }
 
+  const handleDeleteConversation = async (id: string) => {
+    try {
+      await deleteConversation(id)
+      notify({ type: 'success', message: t('common.api.success') })
+      const newConversationList = conversationList.filter(item => item.id !== id)
+      setConversationList(newConversationList)
+      if (id === currConversationId) {
+        if (newConversationList.length > 0) {
+          handleConversationIdChange(newConversationList[0].id)
+        }
+        else {
+          handleConversationIdChange('-1')
+        }
+      }
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: e.message || 'Delete failed' })
+    }
+  }
+
   const renderSidebar = () => {
     if (!APP_ID || !APP_INFO || !promptConfig) { return null }
     return (
@@ -642,6 +650,7 @@ const Main: FC<IMainProps> = () => {
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={APP_INFO.copyright || APP_INFO.title}
+        onDeleteConversation={handleDeleteConversation}
       />
     )
   }
@@ -651,14 +660,14 @@ const Main: FC<IMainProps> = () => {
   if (!APP_ID || !APP_INFO || !promptConfig) { return <Loading type='app' /> }
 
   return (
-    <div className='bg-gray-100'>
+    <div className='w-full bg-white rounded-xl md:rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col h-[850px] md:h-[900px] border border-gray-200/60 relative'>
       <Header
         title={APP_INFO.title}
         isMobile={isMobile}
         onShowSideBar={showSidebar}
         onCreateNewChat={() => handleConversationIdChange('-1')}
       />
-      <div className="flex rounded-t-2xl bg-white overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* sidebar */}
         {!isMobile && renderSidebar()}
         {isMobile && isShowSidebar && (
@@ -669,7 +678,7 @@ const Main: FC<IMainProps> = () => {
           </div>
         )}
         {/* main */}
-        <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
+        <div className='flex-grow flex flex-col overflow-hidden'>
           <ConfigSence
             conversationName={conversationName}
             hasSetInputs={hasSetInputs}
@@ -684,7 +693,7 @@ const Main: FC<IMainProps> = () => {
 
           {
             hasSetInputs && (
-              <div className='relative grow pc:w-[794px] max-w-full mobile:w-full pb-[180px] mx-auto mb-3.5' ref={chatListDomRef}>
+              <div className='relative grow flex flex-col overflow-hidden pc:w-[794px] max-w-full mobile:w-full mx-auto'>
                 <Chat
                   chatList={chatList}
                   onSend={handleSend}
@@ -697,6 +706,10 @@ const Main: FC<IMainProps> = () => {
               </div>)
           }
         </div>
+      </div>
+      {/* 版权信息 - 固定在窗口左下角 */}
+      <div className='absolute bottom-0 left-0 z-10 px-4 py-3 pointer-events-none'>
+        <div className="text-gray-400 font-normal text-xs">© {APP_INFO?.copyright || APP_INFO?.title || '简历匹配助手'} {new Date().getFullYear()}</div>
       </div>
     </div>
   )

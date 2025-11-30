@@ -6,15 +6,18 @@ import type { Emoji } from '@/types/tools'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import StreamdownMarkdown from '@/app/components/base/streamdown-markdown'
 import Tooltip from '@/app/components/base/tooltip'
-import WorkflowProcess from '@/app/components/workflow/workflow-process'
 import { randomString } from '@/utils/string'
 import ImageGallery from '../../base/image-gallery'
 import LoadingAnim from '../loading-anim'
 import s from '../style.module.css'
 import Thought from '../thought'
+import type { JobMatchingData } from './job-matching-report'
+import ReportCard from './report-card'
+import SummaryReportCard from './summary-report-card'
 
 function OperationBtn({ innerContent, onClick, className }: { innerContent: React.ReactNode, onClick?: () => void, className?: string }) {
   return (
@@ -85,6 +88,53 @@ const Answer: FC<IAnswerProps> = ({
   const isAgentMode = !!agent_thoughts && agent_thoughts.length > 0
 
   const { t } = useTranslation()
+  const router = useRouter()
+
+  const tryParseJobMatchingData = (content: string): JobMatchingData | JobMatchingData[] | null => {
+    try {
+      if (!content || !content.trim().startsWith('{')) {
+        return null
+      }
+      const data = JSON.parse(content)
+
+      // Handle new format: {"recommendations": [...]}
+      if (data.recommendations && Array.isArray(data.recommendations)) {
+        return data.recommendations
+      }
+
+      // Handle old format: {"jobs": [...]}
+      if (data.jobs && Array.isArray(data.jobs)) {
+        return data.jobs
+      }
+
+      // Handle single job structure (new format with 公司名称)
+      if ((data['匹配度评分（0-100）'] !== undefined || data['匹配度评分'] !== undefined) && (data['公司名称'] || data['公司'])) {
+        return data as JobMatchingData
+      }
+      return null
+    }
+    catch (e) {
+      return null
+    }
+  }
+
+  const jobMatchingData = !isAgentMode ? tryParseJobMatchingData(content) : null
+  const isMultipleJobs = Array.isArray(jobMatchingData)
+  // If it is responding and the content starts with { but cannot be parsed as data yet, it is considered as generating a report
+  const isGeneratingReport = isResponding && !jobMatchingData && content.trim().startsWith('{')
+
+  const handleCardClick = (data: JobMatchingData) => {
+    // Create a unique ID for this specific job report if it doesn't have one
+    const reportId = `${id}_${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem(`report_data_${reportId}`, JSON.stringify(data))
+    router.push(`/report?id=${reportId}`)
+  }
+
+  const handleSummaryCardClick = (data: JobMatchingData[]) => {
+    const reportId = `${id}_summary_${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem(`report_data_${reportId}`, JSON.stringify(data))
+    router.push(`/report?id=${reportId}`)
+  }
 
   /**
    * Render feedback results (distinguish between users and administrators)
@@ -189,10 +239,8 @@ const Answer: FC<IAnswerProps> = ({
         </div>
         <div className={`${s.answerWrap} max-w-[calc(100%-3rem)]`}>
           <div className={`${s.answer} relative text-sm text-gray-900`}>
-            <div className={`ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl ${workflowProcess && 'min-w-[480px]'}`}>
-              {workflowProcess && (
-                <WorkflowProcess data={workflowProcess} hideInfo />
-              )}
+            <div className="ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl">
+              {/* WorkflowProcess 组件已隐藏，只保留加载动画 */}
               {(isResponding && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
                 ? (
                   <div className="flex items-center justify-center w-6 h-5">
@@ -202,7 +250,34 @@ const Answer: FC<IAnswerProps> = ({
                 : (isAgentMode
                   ? agentModeAnswer
                   : (
-                    <StreamdownMarkdown content={content} />
+                    jobMatchingData
+                      ? (
+                        <div className="flex flex-col gap-4">
+                          {isMultipleJobs
+                            ? (
+                              <SummaryReportCard
+                                data={jobMatchingData as JobMatchingData[]}
+                                onClick={() => handleSummaryCardClick(jobMatchingData as JobMatchingData[])}
+                              />
+                            )
+                            : (
+                              <ReportCard
+                                data={jobMatchingData as JobMatchingData}
+                                onClick={() => handleCardClick(jobMatchingData as JobMatchingData)}
+                              />
+                            )}
+                        </div>
+                      )
+                      : (
+                        isGeneratingReport
+                          ? (
+                            <div className="flex items-center gap-2 text-gray-500 text-sm">
+                              <LoadingAnim type="text" />
+                              <span>正在为您生成专属职位匹配报告</span>
+                            </div>
+                          )
+                          : <StreamdownMarkdown content={content} />
+                      )
                   ))}
               {suggestedQuestions.length > 0 && (
                 <div className="mt-3">
