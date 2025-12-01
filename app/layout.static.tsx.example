@@ -1,3 +1,7 @@
+// 这是用于静态导出（GitHub Pages）的 layout 示例
+// 使用方法：将此文件重命名为 layout.tsx（或创建新文件并更新配置）
+// 注意：这将使整个应用成为客户端渲染，可能影响性能
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -36,3 +40,4 @@ const LocaleLayout = ({
 }
 
 export default LocaleLayout
+

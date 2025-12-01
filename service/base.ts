@@ -1,4 +1,5 @@
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, API_KEY, API_URL, USE_DIRECT_API } from '@/config'
+import { getUserIdentifier } from '@/utils/session'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/chat/type'
 import type { VisionFile } from '@/types/app'
@@ -12,13 +13,49 @@ const ContentType = {
   download: 'application/octet-stream', // for download
 }
 
+// API 路径映射：从内部路径映射到 Dify API 路径
+const API_PATH_MAP: Record<string, string> = {
+  'chat-messages': 'chat-messages',
+  'conversations': 'conversations',
+  'messages': 'messages',
+  'parameters': 'parameters',
+  'file-upload': 'files/upload',
+}
+
+// 获取实际的 API 路径
+const getApiPath = (url: string): string => {
+  if (!USE_DIRECT_API || !API_URL) {
+    return url // 使用本地 API routes
+  }
+
+  // 移除前导斜杠
+  const cleanUrl = url.startsWith('/') ? url.slice(1) : url
+  // 映射到 Dify API 路径
+  const mappedPath = API_PATH_MAP[cleanUrl] || cleanUrl
+
+  // 如果 API_URL 以 /v1 结尾，不需要再加 /v1
+  const baseUrl = API_URL.endsWith('/v1') ? API_URL : `${API_URL}/v1`
+  return `${baseUrl}/${mappedPath}`
+}
+
+const getBaseHeaders = (): Headers => {
+  const headers = new Headers({
+    'Content-Type': ContentType.json,
+  })
+
+  // 如果使用直接 API，添加 Authorization header
+  if (USE_DIRECT_API && API_KEY) {
+    headers.set('Authorization', `Bearer ${API_KEY}`)
+  }
+
+  return headers
+}
+
 const baseOptions = {
   method: 'GET',
   mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
+  credentials: USE_DIRECT_API ? 'omit' as RequestCredentials : 'include', // 直接 API 不需要 cookies
+  headers: getBaseHeaders(),
   redirect: 'follow',
 }
 
@@ -174,7 +211,7 @@ const handleStream = (
             try {
               bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
             }
-            catch (e) {
+            catch {
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
@@ -249,25 +286,76 @@ const handleStream = (
 const baseFetch = (url: string, fetchOptions: any, { needAllResponseContent }: IOtherOptions) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
 
-  const urlPrefix = API_PREFIX
+  // 更新 headers（可能被 fetchOptions 覆盖）
+  const headers = getBaseHeaders()
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => headers.set(key, value))
+    } else {
+      Object.keys(options.headers).forEach((key) => {
+        headers.set(key, options.headers[key])
+      })
+    }
+  }
+  options.headers = headers
 
-  let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  // 构建 URL
+  let urlWithPrefix: string
+  if (USE_DIRECT_API && API_URL) {
+    // 直接调用外部 API
+    urlWithPrefix = getApiPath(url)
+  } else {
+    // 使用本地 API routes
+    const urlPrefix = API_PREFIX
+    urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  }
 
   const { method, params, body } = options
+  const queryParams: string[] = []
+
+  // 添加用户标识符（如果使用直接 API）
+  if (USE_DIRECT_API) {
+    const user = getUserIdentifier()
+    if (method === 'GET') {
+      queryParams.push(`user=${encodeURIComponent(user)}`)
+    }
+  }
+
   // handle query
   if (method === 'GET' && params) {
-    const paramsArray: string[] = []
     Object.keys(params).forEach(key =>
-      paramsArray.push(`${key}=${encodeURIComponent(params[key])}`),
+      queryParams.push(`${key}=${encodeURIComponent(params[key])}`),
     )
-    if (urlWithPrefix.search(/\?/) === -1) { urlWithPrefix += `?${paramsArray.join('&')}` }
-
-    else { urlWithPrefix += `&${paramsArray.join('&')}` }
-
     delete options.params
   }
 
-  if (body) { options.body = JSON.stringify(body) }
+  // 添加查询参数
+  if (queryParams.length > 0) {
+    const separator = urlWithPrefix.includes('?') ? '&' : '?'
+    urlWithPrefix += `${separator}${queryParams.join('&')}`
+  }
+
+  // 处理请求体，添加用户标识符（POST/PUT/DELETE）
+  let requestBody = body
+  if (USE_DIRECT_API && body && (method === 'POST' || method === 'PUT' || method === 'DELETE')) {
+    try {
+      const bodyObj = typeof body === 'string' ? JSON.parse(body) : body
+      // 对于 DELETE，如果 body 为空对象，可以跳过
+      if (bodyObj && typeof bodyObj === 'object' && Object.keys(bodyObj).length > 0) {
+        if (!bodyObj.user) {
+          bodyObj.user = getUserIdentifier()
+        }
+        requestBody = bodyObj
+      }
+    } catch {
+      // 如果不是 JSON，保持原样
+      requestBody = body
+    }
+  }
+
+  if (requestBody && (!USE_DIRECT_API || (typeof requestBody === 'object' && Object.keys(requestBody).length > 0))) {
+    options.body = JSON.stringify(requestBody)
+  }
 
   // Handle timeout
   return Promise.race([
@@ -325,23 +413,44 @@ const baseFetch = (url: string, fetchOptions: any, { needAllResponseContent }: I
 }
 
 export const upload = (fetchOptions: any): Promise<any> => {
-  const urlPrefix = API_PREFIX
-  const urlWithPrefix = `${urlPrefix}/file-upload`
+  let urlWithPrefix: string
+  if (USE_DIRECT_API && API_URL) {
+    urlWithPrefix = getApiPath('file-upload')
+  } else {
+    const urlPrefix = API_PREFIX
+    urlWithPrefix = `${urlPrefix}/file-upload`
+  }
+
   const defaultOptions = {
     method: 'POST',
     url: `${urlWithPrefix}`,
     data: {},
+    headers: {} as Record<string, string>,
   }
   const options = {
     ...defaultOptions,
     ...fetchOptions,
   }
+
+  // 添加用户标识符到 FormData
+  if (USE_DIRECT_API && options.data instanceof FormData) {
+    const user = getUserIdentifier()
+    if (!options.data.has('user')) {
+      options.data.append('user', user)
+    }
+  }
+
+  // 添加 Authorization header（如果使用直接 API）
+  if (USE_DIRECT_API && API_KEY) {
+    options.headers.Authorization = `Bearer ${API_KEY}`
+  }
+
   return new Promise((resolve, reject) => {
     const xhr = options.xhr
     xhr.open(options.method, options.url)
     for (const key in options.headers) { xhr.setRequestHeader(key, options.headers[key]) }
 
-    xhr.withCredentials = true
+    xhr.withCredentials = !USE_DIRECT_API
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) { resolve({ id: xhr.response }) }
@@ -374,11 +483,46 @@ export const ssePost = (
     method: 'POST',
   }, fetchOptions)
 
-  const urlPrefix = API_PREFIX
-  const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  // 更新 headers
+  const headers = getBaseHeaders()
+  headers.set('Content-Type', ContentType.stream)
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        if (key.toLowerCase() !== 'content-type') {
+          headers.set(key, value)
+        }
+      })
+    } else {
+      Object.keys(options.headers).forEach((key) => {
+        if (key.toLowerCase() !== 'content-type') {
+          headers.set(key, options.headers[key])
+        }
+      })
+    }
+  }
+  options.headers = headers
 
-  const { body } = options
-  if (body) { options.body = JSON.stringify(body) }
+  // 构建 URL
+  let urlWithPrefix: string
+  if (USE_DIRECT_API && API_URL) {
+    urlWithPrefix = getApiPath(url)
+  } else {
+    const urlPrefix = API_PREFIX
+    urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  }
+
+  // 处理请求体，添加用户标识符
+  let requestBody = fetchOptions.body
+  if (USE_DIRECT_API && requestBody) {
+    const bodyObj = typeof requestBody === 'string' ? JSON.parse(requestBody) : requestBody
+    if (!bodyObj.user) {
+      bodyObj.user = getUserIdentifier()
+    }
+    requestBody = bodyObj
+  }
+
+  if (requestBody) { options.body = JSON.stringify(requestBody) }
 
   globalThis.fetch(urlWithPrefix, options)
     .then((res: any) => {

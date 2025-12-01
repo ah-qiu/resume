@@ -14,7 +14,12 @@ export const APP_INFO: AppInfo = {
 export const isShowPrompt = false
 export const promptTemplate = 'I want you to act as a javascript console.'
 
-export const API_PREFIX = '/api'
+// 如果设置了外部 API URL，直接使用；否则使用本地 API routes
+// 对于 GitHub Pages 部署，需要设置为外部 API URL
+export const API_PREFIX = API_URL || '/api'
+
+// 是否使用直接 API 调用（绕过 Next.js API routes）
+export const USE_DIRECT_API = !!API_URL
 
 export const LOCALE_COOKIE_NAME = 'locale'
 

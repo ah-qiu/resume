@@ -50,7 +50,7 @@ export const fetchChatList = async (conversationId: string) => {
 
 // init value. wait for server update
 export const fetchAppParams = async () => {
-  return get('parameters')
+  return get('parameters', { params: {} })
 }
 
 export const updateFeedback = async ({ url, body }: { url: string, body: Feedbacktype }) => {
