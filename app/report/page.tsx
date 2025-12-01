@@ -1,12 +1,12 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { JobMatchingData } from '@/app/components/chat/answer/job-matching-report'
 import JobMatchingReport from '@/app/components/chat/answer/job-matching-report'
 import Loading from '@/app/components/base/loading'
 import { ChevronLeftIcon, SparklesIcon } from '@heroicons/react/24/outline'
 
-export default function ReportPage() {
+function ReportContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
@@ -143,5 +143,17 @@ export default function ReportPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+        <Loading type='app' />
+      </div>
+    }>
+      <ReportContent />
+    </Suspense>
   )
 }
