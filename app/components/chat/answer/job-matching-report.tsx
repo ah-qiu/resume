@@ -195,9 +195,22 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
             <div className="bg-gradient-to-br from-gray-50 to-purple-50/30 rounded-xl border-2 border-purple-100 p-6">
               <div className="space-y-4">
                 {displayItems.map((item, i) => {
-                  // Extract percentage from text (e.g., "约60%", "约80%", "约100%")
-                  const percentageMatch = item.match(/(?:约)?(\d+)%/)
-                  const percentage = percentageMatch ? parseInt(percentageMatch[1], 10) : null
+                  // Try to extract percentage from new format "[100] Reason..." or old format "Reason... 100%"
+                  let percentage: number | null = null
+                  let cleanText = item.trim()
+
+                  // Check for new format: starts with [number]
+                  const newFormatMatch = item.match(/^\[(\d+)\]\s*(.*)/)
+                  if (newFormatMatch) {
+                    percentage = parseInt(newFormatMatch[1], 10)
+                    cleanText = newFormatMatch[2]
+                  } else {
+                    // Fallback to old format extraction
+                    const percentageMatch = item.match(/(?:约)?(\d+)%/)
+                    if (percentageMatch) {
+                      percentage = parseInt(percentageMatch[1], 10)
+                    }
+                  }
 
                   // Determine icon based on percentage
                   let iconElement
@@ -228,7 +241,7 @@ const JobMatchingReport: FC<JobMatchingReportProps> = ({ data, index }) => {
                         {iconElement}
                       </div>
                       <div className={`text-sm leading-relaxed ${textColor}`}>
-                        {item.trim()}
+                        {cleanText}
                       </div>
                     </div>
                   )

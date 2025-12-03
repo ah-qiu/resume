@@ -92,10 +92,18 @@ const Answer: FC<IAnswerProps> = ({
 
   const tryParseJobMatchingData = (content: string): JobMatchingData | JobMatchingData[] | null => {
     try {
-      if (!content || !content.trim().startsWith('{')) {
+      if (!content) { return null }
+
+      // Find the first '{' and last '}' to extract JSON content
+      const firstBrace = content.indexOf('{')
+      const lastBrace = content.lastIndexOf('}')
+
+      if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
         return null
       }
-      const data = JSON.parse(content)
+
+      const jsonContent = content.substring(firstBrace, lastBrace + 1)
+      const data = JSON.parse(jsonContent)
 
       // Handle new format: {"recommendations": [...]}
       if (data.recommendations && Array.isArray(data.recommendations)) {
